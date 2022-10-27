@@ -1,0 +1,163 @@
+---
+title: "writing function"
+output: github_document
+---
+
+```{r}
+library(tidyverse)
+library(rvest)
+set.seed(1)
+
+```
+
+# z score:
+```{r}
+x_vec = rnorm(25, mean = 5, sd = 3)
+
+(x_vec - mean(x_vec)) / sd(x_vec)
+```
+
+```{r}
+z_scores = function(x){
+  if (!is.numeric(x)) {
+    stop("should be numeric")
+  } else if (length(x) == 1) {
+    stop("z scores cshould be longer than 1 vectors")
+  }
+  z = (x - mean(x)) / sd(x)
+  z
+}
+
+z_scores(x_vec)
+z_scores(8)
+z_scores(x = "hello")
+z_scores(x = rbinom(100, 1, .6))
+```
+# multiple output
+```{r}
+mean_sd = function(x) {
+  if (!is.numeric(x)) {
+    stop("should be numeric")
+  } else if (length(x) == 1) {
+    stop("z scores cshould be longer than 1 vectors")
+  }
+  mean_x = mean(x)
+  sd_x = sd(x)
+  
+  tibble(mean_x, sd_x)
+}
+
+mean_sd(x = x_vec)
+```
+
+# multiple inputs
+```{r}
+x_vec = rnorm(n = 25, mean = 28, sd = 4)
+
+tibble(
+  mean = mean(x_vec),
+  sd = sd(x_vec)
+)
+
+```
+```{r}
+mean_sd_sm = function(n_obs, true_m=28, true_sd=4){
+  
+  x = rnorm(n = n_obs, mean = true_m, sd = true_sd)
+
+tibble(
+  mean = mean(x),
+  sd = sd(x)
+)
+
+} 
+```
+
+
+```{r}
+mean_sd_sm(n_obs = 10, true_m = 20, true_sd = 2)
+mean_sd_sm(80)
+mean_sd_sm(true_sd = 6, n_obs = 68, 80)
+```
+# apply to former example
+```{r}
+url = "https://www.amazon.com/product-reviews/B00005JNBQ/ref=cm_cr_arp_d_viewopt_rvwer?ie=UTF8&reviewerType=avp_only_reviews&sortBy=recent&pageNumber=1"
+
+dynamite_html = read_html(url)
+
+review_titles = 
+  dynamite_html %>%
+  html_nodes(".a-text-bold span") %>%
+  html_text()
+
+review_stars = 
+  dynamite_html %>%
+  html_nodes("#cm_cr-review_list .review-rating") %>%
+  html_text() %>%
+  str_extract("^\\d") %>%
+  as.numeric()
+
+review_text = 
+  dynamite_html %>%
+  html_nodes(".review-text-content span") %>%
+  html_text() %>% 
+  str_replace_all("\n", "") %>% 
+  str_trim()
+
+reviews = tibble(
+  title = review_titles,
+  stars = review_stars,
+  text = review_text
+)
+```
+
+```{r}
+read_page_reviews = function(url) {
+
+html = read_html(url)
+
+review_titles = 
+    html %>%
+    html_nodes(".a-text-bold span") %>%
+    html_text()
+  
+  review_stars = 
+    html %>%
+    html_nodes("#cm_cr-review_list .review-rating") %>%
+    html_text() %>%
+    str_extract("^\\d") %>%
+    as.numeric()
+  
+  review_text = 
+    html %>%
+    html_nodes(".review-text-content span") %>%
+    html_text() %>% 
+    str_replace_all("\n", "") %>% 
+    str_trim() %>% 
+    str_subset("The media could not be loaded.", negate = TRUE) %>% 
+    str_subset("^$", negate = TRUE)
+
+reviews = tibble(
+  title = review_titles,
+  stars = review_stars,
+  text = review_text
+)
+reviews
+}
+```
+
+```{r}
+url_base = "https://www.amazon.com/product-reviews/B00005JNBQ/ref=cm_cr_arp_d_viewopt_rvwer?ie=UTF8&reviewerType=avp_only_reviews&sortBy=recent&pageNumber="
+vec_urls = str_c(url_base, 1:5)
+
+dynamite_reviews = bind_rows(
+  read_page_reviews(vec_urls[1]),
+  read_page_reviews(vec_urls[2]),
+  read_page_reviews(vec_urls[3]),
+  read_page_reviews(vec_urls[4]),
+  read_page_reviews(vec_urls[5])
+)
+
+read_page_reviews(url_base)
+```
+
